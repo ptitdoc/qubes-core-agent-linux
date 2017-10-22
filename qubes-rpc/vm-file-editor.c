@@ -11,8 +11,8 @@
 #include "dvm2.h"
 
 #define USER_HOME "/home/user"
-#define MIMEINFO_DATABASES "/usr/share/mime:/usr/local/share:" USER_HOME "/.local/share:/usr/share/qubes/mime-override"
 #define TMP_LOC "/tmp/qopen/"
+// #define DEBUG
 
 static const char *cleanup_filename = NULL;
 
@@ -148,8 +148,6 @@ main()
 	struct stat stat_pre, stat_post, session_stat;
 	char *filename = get_filename();
 	int child, status, log_fd, null_fd;
-	char var[1024], val[4096];
-	FILE *env_file;
 	FILE *waiter_pidfile;
 
 	copy_file_by_name(filename);
@@ -157,7 +155,9 @@ main()
 		perror("stat pre");
 		exit(1);
 	}
+#ifdef DEBUG
 	fprintf(stderr, "time=%s, waiting for qubes-session\n", gettime());
+#endif
 	// wait for X server to starts (especially in DispVM)
 	if (stat("/tmp/qubes-session-env", &session_stat)) {
 		switch (child = fork()) {
@@ -186,7 +186,9 @@ main()
 				}
 		}
 	}
+#ifdef DEBUG
 	fprintf(stderr, "time=%s, starting editor\n", gettime());
+#endif
 	switch (child = fork()) {
 		case -1:
 			perror("fork");
@@ -194,13 +196,7 @@ main()
 		case 0:
 			null_fd = open("/dev/null", O_RDONLY);
 			dup2(null_fd, 0);
-			close(null_fd);		
-
-			env_file = fopen("/tmp/qubes-session-env", "r");
-			while(fscanf(env_file, "%1024[^=]=%4096[^\n]\n", var, val) == 2) {
-				setenv(var, val, 1);
-			}
-			fclose(env_file);
+			close(null_fd);
 
 			log_fd = open("/tmp/mimeopen.log", O_CREAT | O_APPEND, 0666);
 			if (log_fd == -1) {
@@ -212,8 +208,7 @@ main()
 
 			setenv("HOME", USER_HOME, 1);
 			setenv("DISPLAY", ":0", 1);
-			execl("/usr/bin/mimeopen", "mimeopen", "-n",
-					"--database", MIMEINFO_DATABASES, filename, (char*)NULL);
+			execl("/usr/bin/qubes-open", "qubes-open", filename, (char*)NULL);
 			perror("execl");
 			exit(1);
 		default:

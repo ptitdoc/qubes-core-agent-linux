@@ -82,7 +82,6 @@ int main(int argc, char **argv)
     char *abs_exec_path;
     pid_t child_pid = 0;
     int inpipe[2], outpipe[2];
-    char pid_s[10];
 
     if (argc < 3) {
         fprintf(stderr,
@@ -110,7 +109,7 @@ int main(int argc, char **argv)
     ret = read(trigger_fd, &exec_params, sizeof(exec_params));
     if (ret == 0) {
         fprintf(stderr, "Request refused\n");
-        exit(1);
+        exit(126);
     }
     if (ret < 0 || ret != sizeof(exec_params)) {
         perror("read");
@@ -123,8 +122,7 @@ int main(int argc, char **argv)
             perror("socketpair");
             exit(1);
         }
-        snprintf(pid_s, sizeof(pid_s), "%d", getpid());
-        setenv("QREXEC_AGENT_PID", pid_s, 1);
+        prepare_child_env();
 
         switch (child_pid = fork()) {
             case -1:
@@ -169,8 +167,16 @@ int main(int argc, char **argv)
     }
 
     close(trigger_fd);
-    if (start_local_process)
-        waitpid(child_pid, &i, 0);
+    if (start_local_process) {
+        if (waitpid(child_pid, &i, 0) != -1) {
+            if (WIFSIGNALED(i))
+                ret = 128 + WTERMSIG(i);
+            else
+                ret = WEXITSTATUS(i);
+        } else {
+            perror("wait for local process");
+        }
+    }
 
     return ret;
 }

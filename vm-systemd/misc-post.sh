@@ -1,19 +1,14 @@
 #!/bin/sh
 
-if [ -f /var/run/qubes-service/yum-proxy-setup -o -f /var/run/qubes-service/updates-proxy-setup ]; then
-    if [ -d /etc/apt/apt.conf.d ]; then
-        echo 'Acquire::http::Proxy "http://10.137.255.254:8082/";' >> /etc/apt/apt.conf.d/01qubes-proxy
-    fi
-    if [ -d /etc/yum.conf.d ]; then
-        echo proxy=http://10.137.255.254:8082/ > /etc/yum.conf.d/qubes-proxy.conf
-    fi
-else
-    if [ -d /etc/apt/apt.conf.d ]; then
-        rm -f /etc/apt/apt.conf.d/01qubes-proxy
-    fi
-    if [ -d /etc/yum.conf.d ]; then
-        echo > /etc/yum.conf.d/qubes-proxy.conf
-    fi
+# Source Qubes library.
+# shellcheck source=init/functions
+. /usr/lib/qubes/init/functions
+
+/usr/lib/qubes/update-proxy-configs
+
+if [ -n "$(ls -A /usr/local/lib 2>/dev/null)" ] || \
+     [ -n "$(ls -A /usr/local/lib64 2>/dev/null)" ]; then
+    ldconfig
 fi
 
 # Set IP address again (besides action in udev rules); this is needed by
@@ -22,29 +17,6 @@ fi
 # qubesdb-read fails
 INTERFACE=eth0 /usr/lib/qubes/setup-ip
 
-[ -x /rw/config/rc.local ] && /rw/config/rc.local
-
-# Start services which haven't own proper systemd unit:
-
-# Start AppVM specific services
-if [ ! -f /etc/systemd/system/cups.service ]; then
-    if [ -f /var/run/qubes-service/cups ]; then
-        /usr/sbin/service cups start
-        # Allow also notification icon
-        sed -i -e '/^NotShowIn=.*QUBES/s/;QUBES//' /etc/xdg/autostart/print-applet.desktop
-    else
-        # Disable notification icon
-        sed -i -e '/QUBES/!s/^NotShowIn=\(.*\)/NotShowIn=QUBES;\1/' /etc/xdg/autostart/print-applet.desktop
-    fi
+if [ -x /rw/config/rc.local ] ; then
+    /rw/config/rc.local
 fi
-if [ -f /var/run/qubes-service/network-manager ]; then
-    # Allow also notification icon
-    sed -i -e '/QUBES/!s/^OnlyShowIn=.*/\0QUBES;/' /etc/xdg/autostart/nm-applet.desktop
-    sed -i -e '/^NotShowIn=.*/s/QUBES;//' /etc/xdg/autostart/nm-applet.desktop
-else
-    # Disable notification icon
-    sed -i -e '/^OnlyShowIn=.*/s/QUBES;//' /etc/xdg/autostart/nm-applet.desktop
-    sed -i -e '/QUBES/!s/^NotShowIn=.*/\0QUBES;/' /etc/xdg/autostart/nm-applet.desktop
-fi
-
-exit 0

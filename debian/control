@@ -1,20 +1,163 @@
 Source: qubes-core-agent
 Section: admin
 Priority: extra
-Maintainer: Davíð Steinn Geirsson <david@dsg.is>
-Build-Depends: qubes-utils (>= 2.0.17), libvchan-xen-dev, python, debhelper, quilt, libxen-dev, dh-systemd (>= 1.5), lsb-release
+Maintainer: unman <unman@thirdeyesecurity.org>
+Build-Depends:
+    libpam0g-dev,
+    libqrexec-utils-dev,
+    libqubes-rpc-filecopy-dev (>= 3.1.3),
+    libvchan-xen-dev,
+    python,
+    python-setuptools,
+    debhelper,
+    quilt,
+    libxen-dev,
+    pkg-config,
+    dh-systemd (>= 1.5),
+    dh-python,
+    lsb-release,
+    xserver-xorg-dev,
+    config-package-dev,
+    pandoc,
 Standards-Version: 3.9.5
-Homepage: http://www.qubes-os.org
-Vcs-Git: git://git.qubes-os.org/marmarek/core-agent-linux.git
+Homepage: https://www.qubes-os.org
+Vcs-Git: https://github.com/QubesOS/qubes-core-agent-linux
 
 Package: qubes-core-agent
 Architecture: any
-Depends: qubes-utils (>= 3.0.1), libvchan-xen, xenstore-utils, iptables-persistent, xserver-xorg-video-dummy, xen-utils-common, ethtool, python2.7, python-gi, init-system-helpers, xdg-user-dirs, iptables, net-tools, initscripts, imagemagick, fakeroot, systemd, locales, sudo, dmsetup, psmisc, ncurses-term, xserver-xorg-core, x11-xserver-utils, xinit, ${shlibs:Depends}, ${misc:Depends}
-Recommends: tinyproxy, gnome-themes-standard, xsettingsd, gnome-packagekit, chrony, ntpdate, network-manager (>= 0.8.1-1), network-manager-gnome, haveged, libnotify-bin, notify-osd, gnome-terminal, python-nautilus, yum, yum-utils
+Depends:
+    dmsetup,
+    gawk,
+    imagemagick,
+    init-system-helpers,
+    initscripts,
+    librsvg2-bin,
+    locales,
+    ncurses-term,
+    psmisc,
+    procps,
+    util-linux,
+    python2.7,
+    python-daemon,
+    python-qubesdb,
+    python-gi,
+    python-xdg,
+    python-dbus,
+    qubes-utils (>= 3.1.3),
+    qubes-core-agent-qrexec,
+    systemd,
+    x11-xserver-utils,
+    xdg-user-dirs,
+    xdg-utils,
+    xen-utils-common,
+    xenstore-utils,
+    xinit,
+    xserver-xorg-core,
+    ${python:Depends},
+    ${shlibs:Depends},
+    ${misc:Depends}
+Recommends:
+    cups,
+    gnome-terminal,
+    gnome-themes-standard,
+    haveged,
+    libnotify-bin,
+    locales-all,
+    mate-notification-daemon,
+    ntpdate,
+    system-config-printer,
+    qubes-core-agent-nautilus,
+    qubes-core-agent-networking,
+    qubes-core-agent-network-manager,
+    xsettingsd
 Conflicts: qubes-core-agent-linux, firewalld, qubes-core-vm-sysvinit
 Description: Qubes core agent
  This package includes various daemons necessary for qubes domU support,
  such as qrexec.
 
-# Unresolved depends that exist in rpm_spec
-#qubes-core-vm-kernel-placeholder, qubes-core-vm,
+Package: qubes-core-agent-qrexec
+Architecture: any
+Depends:
+    libvchan-xen,
+    ${shlibs:Depends},
+    ${misc:Depends}
+Replaces: qubes-core-agent (<< 4.0.0-1)
+Breaks: qubes-core-agent (<< 4.0.0-1)
+Description: Qubes qrexec agent
+ Agent part of Qubes RPC system. A daemon responsible for starting processes as
+ requested by dom0 or other VMs, according to dom0-enforced policy.
+
+Package: qubes-core-agent-nautilus
+Architecture: any
+Depends:
+    python-nautilus,
+    qubes-core-agent-qrexec,
+Replaces: qubes-core-agent (<< 4.0.0-1)
+Breaks: qubes-core-agent (<< 4.0.0-1)
+Description: Qubes integration for Nautilus
+ Nautilus addons for inter-VM file copy/move/open.
+
+Package: qubes-core-agent-dom0-updates
+Architecture: any
+Depends:
+    fakeroot,
+    yum,
+    yum-utils,
+    qubes-core-agent-qrexec,
+Replaces: qubes-core-agent (<< 4.0.0-1)
+Breaks: qubes-core-agent (<< 4.0.0-1)
+Description: Scripts required to handle dom0 updates.
+  Scripts required to handle dom0 updates. This will allow to use the VM as
+  "Updates VM".
+
+Package: qubes-core-agent-networking
+Architecture: any
+Depends:
+    qubes-core-agent,
+    tinyproxy,
+    iptables,
+    net-tools,
+    ethtool,
+    socat,
+    tinyproxy,
+    ${python:Depends},
+    ${misc:Depends}
+Suggests:
+    nftables,
+Replaces: qubes-core-agent (<< 4.0.0-1)
+Breaks: qubes-core-agent (<< 4.0.0-1)
+Description: Networking support for Qubes VM
+ This package provides:
+  * basic network functionality (setting IP address, DNS, default gateway)
+  * proxy service used by TemplateVMs to download updates
+  * qubes-firewall service (FirewallVM)
+ .
+ Note: if you want to use NetworkManager (you do want it in NetVM), install
+ also qubes-core-agent-network-manager.
+
+Package: qubes-core-agent-network-manager
+Architecture: any
+Depends:
+    qubes-core-agent-networking,
+    libglib2.0-bin,
+    network-manager (>= 0.8.1-1),
+    network-manager-gnome,
+Replaces: qubes-core-agent (<< 4.0.0-1)
+Breaks: qubes-core-agent (<< 4.0.0-1)
+Description: NetworkManager integration for Qubes VM
+ Integration of NetworkManager for Qubes VM:
+  * make connections config persistent
+  * adjust DNS redirections when needed
+  * show/hide NetworkManager applet icon
+
+Package: qubes-core-agent-passwordless-root
+Architecture: any
+Replaces: qubes-core-agent (<< 4.0.0-1)
+Breaks: qubes-core-agent (<< 4.0.0-1)
+Provides: ${diverted-files}
+Conflicts: ${diverted-files}
+Description: Passwordless root access from normal user
+ Configure sudo, PolicyKit and similar tool to not ask for any password when
+ switching from user to root. Since all the user data in a VM is accessible
+ already from normal user account, there is not much more to guard there. Qubes
+ VM is a single user system.

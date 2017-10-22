@@ -1,3 +1,1034 @@
+qubes-core-agent (4.0.11-1) unstable; urgency=medium
+
+  [ Tray Torrance ]
+  * Add archlinux support to upgrade checker
+
+  [ Nedyalko Andreev ]
+  * Fix an incorrect grep usage in archlinux upgrade check
+  * Simplify archlinux upgrade check
+
+  [ Marek Marczykowski-Górecki ]
+  * Add convenient wrappers for qvm-copy-to-vm and qvm-move-to-vm
+  * qrexec: code style fix - use spaces for indentation
+  * qrexec: use user shell instead of hardcoded /bin/sh
+  * qubes.ResizeDisk: handle dmroot being a symlink
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 07 Oct 2017 02:35:42 +0200
+
+qubes-core-agent (4.0.10-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * centos: add package signing key, setup repository
+  * network: fix issues found by shellcheck
+  * qubes-rpc: fix issues found by shellcheck
+  * init: fix issues found by shellcheck in init scripts
+  * debian: fix shellcheck warnings in debian packaging
+  * Fix shellcheck warnings in block-snapshot script
+  * Fix shellcheck warnings in download-dom0-updates.sh
+  * Few more shellcheck warnings fixes/ignores
+  * Hint shellcheck where to look for sourced files, if in repository
+  * travis: add shellcheck call for all scripts in the repository
+
+  [ Nedyalko Andreev ]
+  * Fix the archlinux package, use correct DROPIN dirs
+  * Disable Oliver's binary pacman repo by default
+  * Fix indentation and shellcheck issues for archlinux
+  * Fix the install script after the shellcheck "fixes"
+  * Fix the previous shellcheck-related "fixes" again
+
+  [ Jussi Timperi ]
+  * archlinux: add correct section to qubes-noupgrade.conf
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 04 Oct 2017 15:19:35 +0200
+
+qubes-core-agent (4.0.9-1) unstable; urgency=medium
+
+  [ Frédéric Pierret ]
+  * dnf-qubes-hooks: handle newer DNF >= 2.x
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: add fc26 build
+  * Look for applications also in subdirectories of .../applications
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 26 Sep 2017 23:09:45 +0200
+
+qubes-core-agent (4.0.8-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * dom0-updates: do not modify yum.conf
+
+  [ Frederic Pierret (Epitre) ]
+  * Add CENTOS/RHEL support (drop fedora-release dependancy as template
+    builder will install it anyway and here it only make harder to
+    support non-fedora builds)
+  * Handle fallthrough with attribute(noreturn) for consistancy and
+    compatiblity with older GCC
+
+  [ Marek Marczykowski-Górecki ]
+  * (redo) updates-proxy: explicitly block connection looping back to
+    the proxy IP
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 15 Sep 2017 13:44:17 +0200
+
+qubes-core-agent (4.0.7-1) unstable; urgency=medium
+
+  * qrexec: add configurable waiting for session before starting service
+  * document /etc/qubes/rpc-config
+  * qubes-rpc: add 'wait-for-session=1' option for some services
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 11 Aug 2017 13:33:35 +0200
+
+qubes-core-agent (4.0.6-1) unstable; urgency=medium
+
+  * Announce if qubes-firewall service is supported+enabled in this
+    template
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 29 Jul 2017 05:31:13 +0200
+
+qubes-core-agent (4.0.5-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * qrexec: ship pam configuration for debian
+  * rpm: add services enabling/disabling logic
+  * qrexec: start process in a login shell
+
+  [ Marta Marczykowska-Górecka ]
+  * clock synchronization rewrite
+  * minor amends to clock synchronization
+
+  [ Marek Marczykowski-Górecki ]
+  * clock sync: drop untrusted_ prefix after value validation, fix error
+    msg
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 12 Jul 2017 23:40:54 +0200
+
+qubes-core-agent (4.0.4-1) unstable; urgency=medium
+
+  * grub: add console=tty0 to kernel cmdline
+  * rpm: do not mess with locales in post-install script
+  * Don't use 'su' in qubes.WaitForSession if not needed
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 05 Jul 2017 14:02:22 +0200
+
+qubes-core-agent (4.0.3-1) unstable; urgency=medium
+
+  [ unman ]
+  * Enable build for Zesty
+
+  [ Marek Marczykowski-Górecki ]
+  * Do not load 'dummy-hcd' kernel module
+
+  [ Vincent Penquerc'h ]
+  * core-agent-linux: misc const fixups
+
+  [ Marek Marczykowski-Górecki ]
+  * qrexec: use PAM directly instead of calling su to setup the session
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 05 Jul 2017 02:37:51 +0200
+
+qubes-core-agent (4.0.2-1) unstable; urgency=medium
+
+  * Ship grub configuration
+  * Ship Qubes 4.0 repository definition and keys
+  * Update grub configuration
+  * debian: install man pages
+  * Add qrexec-client-vm man page
+  * qrexec: exit with code 126 when service request was refused
+  * qrexec: fix reporting exit code in qrexec-client-vm
+  * qrexec: do not shutdown stdout socket inherited from parent
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 24 Jun 2017 02:19:14 +0200
+
+qubes-core-agent (4.0.1-1) unstable; urgency=medium
+
+  * Switch qubes.UpdatesProxy to socat
+  * rpm,deb: fix dependencies
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 11 Jun 2017 00:02:49 +0200
+
+qubes-core-agent (4.0.0-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * qvm-copy-to-vm: fix handling empty target VM
+  * Rename qubes.xdg python module to qubesxdg
+  * Disable meminfo-writer if there is any PCI device attached
+
+  [ Wojtek Porczyk ]
+  * misc: add qvm-features-request
+
+  [ Marek Marczykowski-Górecki ]
+  * Add qubes.ResizeDisk service to adjust filesystem size
+  * network: rewrite qubes-firewall daemon
+  * network: remove qubes-netwatcher
+
+  [ qubesuser ]
+  * network: add vif-route-qubes-nat for IP address anonymization
+
+  [ Marek Marczykowski-Górecki ]
+  * network: reformat vif-route-qubes-nat
+  * network: change vif-route-qubes-nat parameters
+  * network: integrate vif-route-qubes-nat into vif-route-qubes
+  * network: keep the same MAC on vif interfaces
+  * network: properly handle DNS addresses in vif-qubes-nat.sh
+  * network: use /32 netmask on internal IPs in NAT providing namespace
+  * travis: drop debootstrap workaround
+  * Add qubes.StartApp service
+  * dom0-updates: restructure the script to not update metadata twice
+  * tests: make firewall tests working regardless of python version
+  * firewall: switch to python 3
+  * tests: add run-tests script, plug it into travis
+  * Apply gschema overrides also to debian, rename according to
+    guidelines
+  * fedora,debian: update python3-daemon dependency
+  * Remove duplicated 'close' button from titlebar of gnome applications
+  * Ask for target VM for file-copy in dom0
+  * travis: update to Qubes 4.0 repositories
+  * debian: fix qubes-firewall python packaging, make it more verbose
+  * debian,fedora: split nautilus integration into separate package
+  * Revert "firewall: switch to python 3"
+  * Revert "fedora,debian: update python3-daemon dependency"
+  * debian: add missing Build-Depends: python-setuptools
+  * debian: make haveged.service patch less intrusive...
+  * Rename qvm-run to qvm-run-vm
+  * Implement qrexec-based connection to updates proxy
+  * Implement qubes.PostInstall service
+  * Fix detection of PCI passthrough
+  * rpm: rename qubes-core-vm to qubes-core-agent
+  * Rename qubes-nautilus to qubes-core-agent-nautilus
+  * Split dom0-updates handling into subpackage
+  * rpm: make file list more verbose to ease splitting the package
+  * Split network-related files to -networking and -network-manager
+    packages
+  * Remove DisposableVM savefile related files
+  * rpm: integrate documentation into main package
+  * Adjust dependencies for clean upgrade
+  * rpm: drop dependency on desktop-notification-daemon
+  * Do not report spurious failure of qubes.WaitForSession service
+  * deb,rpm: split passwordless root access configs into separate
+    package
+  * Remove old vusb scripts
+  * debian: update basic metadata of package
+  * rpm,deb: split qrexec-agent into separate subpackage
+  * debian: drop explicit dependency on sudo
+  * Cleanup kernel modules loading configuration
+  * Add qubes.VMRootShell service
+  * Make all scripts in qubes-rpc executable
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 09 Jun 2017 23:30:10 +0200
+
+qubes-core-agent (3.2.18-1) unstable; urgency=medium
+
+  * debian,fedora: drop gnome-packagekit from dependencies
+  * systemd: fix race condition between qubes-db and qubes-early-vm-
+    config
+  * dispvm: don't use perl to decode base64-encoded script
+  * rpm: don't "append" to not existing /etc/yum.conf
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 16 May 2017 00:54:18 +0200
+
+qubes-core-agent (3.2.17-1) unstable; urgency=medium
+
+  [ Jean-Philippe Ouellet ]
+  * Remove dates from man pages
+
+  [ Robin Schneider ]
+  * bind-dirs: Create ro if bind target exists
+  * Fix handling of binds containing spaces
+  * Fix more shellcheck warnings
+
+  [ unman ]
+  * If there is only 1 DNS server make both DNAT rules point to it
+
+  [ Daniel Moerner ]
+  * network: Properly handle comments in NetworkManager.conf (#2584)
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 01 Apr 2017 21:45:29 +0200
+
+qubes-core-agent (3.2.16-1) unstable; urgency=medium
+
+  [ Andrew David Wong ]
+  * Update Xen bug count in sudoers comment
+
+  [ Nicklaus McClendon ]
+  * Copied needed sources to build root
+
+  [ Patrick Schleizer ]
+  * comment
+
+  [ Olivier MEDOC ]
+  * archlinux: fix community repositories URL
+
+  [ Lorenzo ]
+  * Shut down after update only if it's a template.
+  * Shut down after update only if it's a template.
+
+  [ Olivier MEDOC ]
+  * archlinux: fix lsb_release missing
+  * archlinux: update installer script to use systemd preset file
+  * archlinux: fix bash syntax errors
+  * Makefile: enforce mode 750 for directories /etc/sudoers.d and
+    /etc/polkit-1/rules.d
+  * archlinux: fix pacman.d dropin not activated if pacman.conf does not
+    already contains qubes markers
+  * archlinux: add missing qubes-rpc dependencies
+
+  [ Gregorio Guidi ]
+  * Restore functionality of disable-default-route and disable-dns-
+    server.
+
+  [ unman ]
+  * Stop anacron from starting in Debian using existing constraint on
+    cron
+  * Constrain cron and anacron in Ubuntu also
+  * Reset iptables ACCEPT rule for updates proxy if service is running
+  * Fix build for trusty - locales-all not available
+  * Move trusty check and locales-all fix inside source-debian-quilt-
+    copy-in
+  * Apply gschema override preventing previews in nautilus in Debian
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: fix lintian warning - command-with-path-in-maintainer-script
+  * debian: don't fail the upgrade if glib-compile-schemas fails
+
+  [ unman ]
+  * Stop unnecessary services in Debian
+
+  [ Marek Marczykowski-Górecki ]
+  * systemd: place user dropins in /usr/lib instead of /lib
+  * Use online resize2fs, and run filesystem check only when needed
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 07 Mar 2017 23:04:47 +0100
+
+qubes-core-agent (3.2.15-1) wheezy; urgency=medium
+
+  * Fix detection of dom0 updates
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 04 Dec 2016 22:39:01 +0100
+
+qubes-core-agent (3.2.14-1) wheezy; urgency=medium
+
+  [ unman ]
+  * Add systemd override for haveged in xenial and stretch. (#2161)
+    Reenable haveged.service after debian package installation
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: drop debootstrap workaround
+
+  [ Rusty Bird ]
+  * v2: (vm) qvm-move-to-vm: don't "rm -rf" vm name argument
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 04 Dec 2016 21:57:10 +0100
+
+qubes-core-agent (3.2.13-1) wheezy; urgency=medium
+
+  [ Manuel Amador (Rudd-O) ]
+  * Make signing optional for testing, and add program checks.
+  * Clean up early initialization and setup of /rw
+  * Better private.img size management.
+  * Invert logic of systemd_version_changed.
+  * Fix VM settings running while / is readonly.
+  * Clean up specfile unit activation aspect.
+  * Invert logic of SKIP_SIGNING.
+
+  [ Marek Marczykowski-Górecki ]
+  * Revert "network: disable proxy_arp"
+
+  [ Jean-Philippe Ouellet ]
+  * Keep Makefile DRY
+
+  [ Marek Marczykowski-Górecki ]
+  * Refactor qubes.InstallUpdatesGUI to reduce code duplication
+  * Ask to shutdown the template after performing update
+  * Prefer powerpill to update Archlinux VM
+
+  [ Patrick Schleizer ]
+  * fix reload_random_seed error handling
+
+  [ Marek Marczykowski-Górecki ]
+  * Write random seed directly to /dev/urandom
+
+  [ Manuel Amador (Rudd-O) ]
+  * Initialize home_volatile for disposable VMs.
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 18 Nov 2016 01:59:25 +0100
+
+qubes-core-agent (3.2.12-1) wheezy; urgency=medium
+
+  [ unman ]
+  * Remove custom mount when starting cron, in favour of bind-dirs
+  * use bind-dirs to handle crontab persistence
+  * Revert version and correct unit files
+  * Remove entry in changelog as version not bumped
+
+  [ Rudd-O ]
+  * Eliminate race condition with qubes-setup-dnat-to-ns
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 18 Oct 2016 15:55:40 +0200
+
+qubes-core-agent (3.2.11-1) wheezy; urgency=medium
+
+  [ HW42 ]
+  * bind-dirs: copy from ro only if bind target doesn't exists
+
+  [ Marek Marczykowski-Górecki ]
+  * network: minor setup-ip fix
+  * Configure NetworkManager to keep /etc/resolv.conf as plain file
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 03 Oct 2016 11:32:40 +0200
+
+qubes-core-agent (3.2.10-1) wheezy; urgency=medium
+
+  [ HW42 ]
+  * systemd: fix qubes-mount-home path in cleanup script
+  * systemd: remove obsolete symlinks with rm instead of systemctl
+
+  [ Marek Marczykowski-Górecki ]
+  * network: reload NM connection after setting it up
+  * systemd: fix syntax error in preset file
+
+  [ Patrick Schleizer ]
+  * comment legacy function
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 08 Aug 2016 05:23:02 +0200
+
+qubes-core-agent (3.2.9-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * systemd: cleanup removed services
+  * systemd: order qubes-mount-dirs.service before local-fs.target
+  * systemd: load xen-privcmd module
+  * systemd: include tor-disabling drop-ins in the package
+  * systemd: improve ordering of systemd units
+
+  [ Patrick Schleizer ]
+  * add /usr/lib/qubes/bind-dirs.sh compatibility symlink
+  * empty legacy function
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 27 Jul 2016 06:08:56 +0200
+
+qubes-core-agent (3.2.8-1) wheezy; urgency=medium
+
+  * dom0-updates: fix cleaning downloaded packages
+  * Revert "systemd: preset xendriverdomain on update"
+  * systemd: don't mark updates check service failed
+  * systemd: plug random seed loading into systemd-random-seed
+  * Include Qubes Master Key in the VM template
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 17 Jul 2016 04:27:04 +0200
+
+qubes-core-agent (3.2.7-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * systemd: preset xendriverdomain on update
+  * rpm: fix misleading systemd warnings during upgrade
+
+  [ Olivier MEDOC ]
+  * archlinux: switch to usage of pacman.d drop-ins
+  * archlinux: Setup default package repository
+  * archlinux: ensure repositories are the last pacman.d files included
+  * archlinux: fix update-proxy-configs to use pacman.d drop-ins
+
+  [ Patrick Schleizer ]
+  * fixed qubes-core-agent upgrading double package manager lock
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 13 Jul 2016 22:43:06 +0200
+
+qubes-core-agent (3.2.6-1) wheezy; urgency=medium
+
+  [ Patrick Schleizer ]
+  * Do not start tor@default service in TemplateVM.
+
+  [ Marek Marczykowski-Górecki ]
+  * dom0-updates: use dnf --best --allowerasing
+
+  [ Rusty Bird ]
+  * Order network management units after network-pre.target
+  * dvm, then xendriverdomain, then qrexec-agent
+  * *Do* block until good random is available again
+  * Remove 'if true' wrapper from
+    06a0d30d50ce4ea266532c06ef24880bf5363c1b
+  * Enable xendriverdomain.service in 75-qubes-vm.preset
+
+  [ Patrick Schleizer ]
+  * add comment
+  * add comment
+
+  [ Olivier MEDOC ]
+  * archlinux: update installer script in prevision of pacman.d drop-ins
+  * archlinux: provide automatic qubes-trigger-sync-appmenus through
+    pacman hooks
+  * archlinux: remove unnecessary glib-compile-scheme
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 13 Jul 2016 04:38:17 +0200
+
+qubes-core-agent (3.2.5-1) wheezy; urgency=medium
+
+  * travis: add fc24 build
+  * debian: add missing pkg-config build depends
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 06 Jun 2016 00:18:54 +0200
+
+qubes-core-agent (3.2.4-1) wheezy; urgency=medium
+
+  [ Patrick Schleizer ]
+  * fix indent
+
+  [ Marek Marczykowski-Górecki ]
+  * dom0-updates: use dnf when available
+  * Prefer 'dnf' over 'yum' for template update
+
+  [ unman ]
+  * Fall back to gnome utilities if kdialog not present
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: initial version
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 05 Jun 2016 22:10:58 +0200
+
+qubes-core-agent (3.2.3-1) wheezy; urgency=medium
+
+  * Cleanup R3.1->R3.2 transitional package
+  * Update repository definitions for R3.2
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 18 May 2016 23:43:22 +0200
+
+qubes-core-agent (3.2.2-1) wheezy; urgency=medium
+
+  * systemd: order units checking for qubes-service after qubes-sysinit
+  * qvm-open-in-vm: escape URL when wrapping it in HTML
+  * Implement qubes.OpenURL service instead of wrapping URLs in HTML
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 18 May 2016 03:00:12 +0200
+
+qubes-core-agent (3.2.1-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * qubes-rpc: fix SVG icon scaling
+  * Fix bind-dirs.sh path
+
+  [ Olivier MEDOC ]
+  * archlinux: fix remaining loginctl privilege issues with invalid
+    pam.d configuration
+
+  [ Marek Marczykowski-Górecki ]
+  * Remove obsolete policy files
+
+  [ Patrick Schleizer ]
+  * fixed bind-dirs legacy import function
+  * fixed sh syntax error
+  * minor debug xtrace output
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 05 May 2016 00:05:13 +0200
+
+qubes-core-agent (3.2.0-1) wheezy; urgency=medium
+
+  [ Patrick Schleizer ]
+  * disable systemd-timesyncd
+
+  [ Marek Marczykowski-Górecki ]
+  * qrexec: write service stderr to both syslog and caller
+  * qrexec: hide timing debug messages in vm-file-editor
+
+  [ Patrick Schleizer ]
+  * do not start the Tor service inside Qubes TemplateVMs
+  * work on bind-dirs https://phabricator.whonix.org/T414
+  * work on bind-dirs
+  * work on bind-dirs
+  * renamed:    misc/bind-dirs -> vm-systemd/bind-dirs
+  * renamed:    bind-dirs -> bind-dirs.sh
+  * run /usr/lib/qubes/bind-dirs.sh from mount-dirs.sh
+  * use symlink_level_max rather than hardcoding 10; comment
+  * also exit from bind-directories if file /var/run/qubes-service/qubes-
+    dvm exists
+  * fixed broken file copy for files in multi level directories
+  * refactoring / code simplification
+
+  [ Rusty Bird ]
+  * qvm-move-to-vm: Remove duplicated code
+  * qvm-move-to-vm: Use '--' before file arguments
+  * Use && in qvm-move-to-vm
+
+  [ Andrew ]
+  * Use proper space-expanded tabs, as per the coding guidelines.
+  * Move usage information printing to separate function, and print
+    usage to stderr; also added some spacing.
+  * Use proper quoting around variables.
+  * Properly handle case of empty domain name.
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: Add bind-dirs.sh to spec file
+  * qubes.SuspendPreAll and qubes.SuspendPostAll services
+  * qrexec: unify service environment preparation
+
+  [ Patrick Schleizer ]
+  * use 'true' rather than ':' for consistency
+  * minor indent
+
+  [ Rusty Bird ]
+  * Remove exec in last line of qvm-copy-to-vm
+
+  [ Marek Marczykowski-Górecki ]
+  * qrexec: add service argument support
+  * network: run setup-ip only on xen frontend interfaces
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 29 Mar 2016 14:41:34 +0200
+
+qubes-core-agent (3.1.14-1) wheezy; urgency=medium
+
+  * network: use `qubes-primary-dns` QubesDB entry if present
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 07 Mar 2016 13:47:01 +0100
+
+qubes-core-agent (3.1.13-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * sysinit: Accept also old xenbus kernel interface
+
+  [ adrianx64 ]
+  * Proposed solution for issue #1657
+
+  [ Marek Marczykowski-Górecki ]
+  * Move opening file viewer/editor into separate shell script
+  * qubes-open: switch from mimeopen to xdg-open
+
+  [ Olivier MEDOC ]
+  * update qubes.InstallUpdateGUI to support archlinux
+  * archlinux: add gcc and make as make dependencies
+  * implement update proxy support for archlinux
+  * archlinux: add Qubes Markers in pacman.conf so that changes done by
+    qubes scripts are not inserted at the end of pacman.conf
+  * archlinux: properly add qubes markers in pacman.conf
+  * update-proxy: use curl instead of wget in archlinux in order to
+    limit additional dependencies
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 08 Feb 2016 05:07:39 +0100
+
+qubes-core-agent (3.1.12-1) wheezy; urgency=medium
+
+  * Unload USB controllers drivers in USB VM before going to sleep
+  * Do not try to signal NetworkManager before suspend if it isn't
+    running
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 11 Jan 2016 21:59:34 +0100
+
+qubes-core-agent (3.1.11-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * dom0-updates: add a message explaining yum deprecated warning
+
+  [ noname ]
+  * archlinux: Added python{2,3} as dependency. Solved python22 bug.
+
+  [ Marek Marczykowski-Górecki ]
+  * Fix time sync service
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 07 Jan 2016 05:52:35 +0100
+
+qubes-core-agent (3.1.10-1) wheezy; urgency=medium
+
+  * network: use more strict policy about incoming traffic
+  * debian: add missing python-gtk2 dependency
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 31 Dec 2015 02:58:29 +0100
+
+qubes-core-agent (3.1.9-1) wheezy; urgency=medium
+
+  * dnf: drop shebang, it isn't standalone script
+  * Package DNF plugin for both python2 and python3
+  * dom0-updates: fix reporting when no updates are available
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 26 Dec 2015 14:24:00 +0100
+
+qubes-core-agent (3.1.8-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * open-in-vm: Fix path to mimeinfo database
+
+  [ Olivier MEDOC ]
+  * archlinux: fix invalid systemd path in make install directive
+  * archlinux: remove quotes when checking system locales (in case it
+    has been user defined)
+
+  [ MB ]
+  * [network-proxy-setup] Permit !CONFIG_MODuLES
+
+  [ Rusty Bird ]
+  * repo description: updates-testing -> security-testing
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: add security-testing repository
+
+  [ Olivier MEDOC ]
+  * archlinux: ensure systemctl reset preset correctly (need to be
+    started twice)
+
+  [ Marek Marczykowski-Górecki ]
+  * updates-proxy: restart on network configuration change to reload DNS
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 20 Dec 2015 03:12:39 +0100
+
+qubes-core-agent (3.1.7-1) wheezy; urgency=medium
+
+  * updates-proxy: explicitly block connection looping back to the proxy
+    IP
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 04 Dec 2015 15:32:14 +0100
+
+qubes-core-agent (3.1.6-1) wheezy; urgency=medium
+
+  * Revert "network: use drop-ins for NetworkManager configuration
+    (#1176)"
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 29 Nov 2015 00:34:34 +0100
+
+qubes-core-agent (3.1.5-1) wheezy; urgency=medium
+
+  [ Patrick Schleizer ]
+  * clean up /etc/tinyproxy/filter-updates
+
+  [ Olivier MEDOC ]
+  * updates-proxy: remove remaining traces of proxy filtering file from
+    Makefile
+  * rpm_spec: declare InstallUpdateGUI qrexec_service
+  * archlinux: enforce minimum versionning of qubes-utils
+
+  [ Patrick Schleizer ]
+  * Prevent services from being accidentally restarted by `needrestart`.
+  * Have qubes-sysinit create /var/run/qubes VM type files.
+
+  [ Marek Marczykowski-Górecki ]
+  * Package needrestart config only for Debian
+  * debian: reformat Build-Depends:
+  * debian: update build-depends for split qubes-utils package
+  * backup: Use 'type' instead of 'which' to prevent unnecessary
+    dependency
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 28 Nov 2015 14:48:33 +0100
+
+qubes-core-agent (3.1.4-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Minor improvements to packaging (based on rpmlint)
+
+  [ Patrick Schleizer ]
+  * removed confusing comments
+  * minor indent
+  * No longer start /etc/init.d/tinyproxy by default anymore.
+
+  [ Marek Marczykowski-Górecki ]
+  * Revert "preset disable tinyproxy by default"
+
+  [ Patrick Schleizer ]
+  * minor, removed trailing space
+  * Improved upgrade notifications sent to QVMM.
+  * fixed inverted logic issue in upgrades-installed-check
+  * misc/upgrades-installed-check: handle apt-get errors
+
+  [ Marek Marczykowski-Górecki ]
+  * Explicitly fail upgrades-installed-check on other distributions
+
+  [ qubesuser ]
+  * Allow to provide customized DispVM home directly in the template VM
+
+  [ Marek Marczykowski-Górecki ]
+  * network: let NetworkManager configure VM uplink, if enabled
+  * Use improved update-notify script also in Fedora
+  * Implement qubes.InstallUpdatesGUI qrexec service
+  * Really fix update-proxy rules for debian security fixes repo
+  * updates-proxy: disable filtering at all
+  * network: disable proxy_arp
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 15 Nov 2015 04:29:29 +0100
+
+qubes-core-agent (3.1.3-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * network: forward TCP DNS queries
+
+  [ Patrick Schleizer ]
+  * removed trailing spaces
+  * Renamed qubes-mount-home to qubes-mount-dirs.
+
+  [ Marek Marczykowski-Górecki ]
+  * qrexec: implement buffered write to a child stdin
+
+  [ Olivier MEDOC ]
+  * archlinux: update packaging and install script to use systemd
+    DROPINs
+  * archlinux: force running scripts with python2 even when /usr/bin/env
+    is used
+  * archlinux: readd notification-daemon as a dependency
+  * archlinux: readd lines removed by error during merge
+
+  [ Patrick Schleizer ]
+  * disable leaking TCP timestamps by default
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: add /etc/sysctl.d/20_tcp_timestamps.conf
+  * rpm: remove duplicated entry
+
+  [ Patrick Schleizer ]
+  * cleanup /etc/apt/apt.conf.d/00notiy-hook on existing systems
+
+  [ erihe251 ]
+  * Small language fixes
+  * Update qubes.sudoers
+
+  [ Marek Marczykowski-Górecki ]
+  * Require new enough qubes-utils package for updated libqrexec-utils
+  * debian: install locales-all instead of custom locales generation
+  * makefile: cleanup help message
+  * Setup updates proxy in dnf and PackageKit
+  * backup: fix handling backup filename with spaces
+  * backup: improve exit code reporting
+
+  [ Rusty Bird ]
+  * qfile-unpacker: Avoid data loss by checking for child errors
+
+  [ Marek Marczykowski-Górecki ]
+  * appmenus: ignore entries with NoDisplay=true
+  * qfile-agent: move data handling code to libqubes-rpc-filecopy
+
+  [ yaqu ]
+  * Replacing "sleep 365d" with "sleep inf"
+
+  [ Marek Marczykowski-Górecki ]
+  * No longer disable auditd
+  * dom0-updates: prefer yum-deprecated over dnf
+  * fedora: Add skip_if_unavailable=False to Qubes repositories
+
+  [ Olivier MEDOC ]
+  * add DROPINS for org.cups.cupsd systemd files.
+  * dropins: make current systemd dropins specific to systemd-system in
+    order to introduce dropins for systemd-user
+  * dropins: implement dropins for systemd user starting with pulseaudio
+    systemd service and socket masking
+
+  [ Marek Marczykowski-Górecki ]
+  * qrexec: add some comments, minor improvement in readability
+  * qrexec: use #define for protocol-specified strings
+  * dracut: disable hostonly mode
+  * dom0-updates: use yum-deprecated instead of dnf in all calls
+  * updates-proxy-setup: use temporary file for config snippet
+  * Implement dnf hooks for post-update actions
+  * fedora: do not require/use yum-plugin-post-transaction-actions in
+    F>=22
+  * Get rid of qubes-core-vm-kernel-placeholder
+  * systemd: make sure that update check is started only after qrexec-
+    agent
+  * dom0-updates: do not use 'yum check-update -q'
+  * Bump qubes-utils version requirement
+
+  [ Patrick Schleizer ]
+  * preset disable tinyproxy by default
+
+  [ Marek Marczykowski-Górecki ]
+  * updates-proxy: use separate directory for PID file
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 11 Nov 2015 06:29:21 +0100
+
+qubes-core-agent (3.1.2-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * Enlarge /tmp and /dev/shm
+  * network: use own iptables service instead of repurposing existing
+    one
+
+  [ Patrick Schleizer ]
+  * removed iptables-persistent from Depends to improve usablity (avoid
+    redundant debconf question)
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: disable netfilter-persistent.service
+  * Adjust progress message on file move operation
+  * Run 'ldconfig' to update /usr/local/lib* cache, if applicable
+  * updates-proxy: Disable 'Via: tinyproxy' header
+  * Cleanup R3.0->R3.1 transitional package
+  * network: use drop-ins for NetworkManager configuration (#1176)
+  * network: fix 'qubes-uplink-eth0' NetworkManager connection (#1280)
+
+  [ Patrick Schleizer ]
+  * minor
+
+  [ HW42 ]
+  * qubes-random-seed: feed kernel rng with randomness from dom0
+  * reload qubes-random-seed when restoring DispVM
+
+  [ Marek Marczykowski-Górecki ]
+  * systemd: actually enable qubes-random-seed service
+  * sysvinit: load random seed from dom0 provided data
+  * Use 'type' instead of 'which' to prevent unnecessary dependency
+  * Add missing R: dconf to hide nm-applet when not used
+  * dom0-updates: Fix showing package list when --check-only option was
+    used
+  * dom0-updates: check "yum check-update" exit code, not only its
+    output
+  * dom0-updates: fix hostname in error message
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 11 Oct 2015 03:00:00 +0200
+
+qubes-core-agent (3.1.1-1) wheezy; urgency=medium
+
+  * Update repository definition for r3.1
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 29 Sep 2015 16:55:35 +0200
+
+qubes-core-agent (3.1.0-1) wheezy; urgency=medium
+
+  [ Patrick Schleizer ]
+  * Allow passwordless login for user "user" (when using 'sudo xl
+    console').
+  * Allow passwordless login for user "user" (when using 'sudo xl
+    console') for images being upgraded.
+  * show error msg if qubes.ReceiveUpdates failed
+
+  [ qubesuser ]
+  * qubes-rpc: fix broken temporary file deletion in qubes.GetImageRGBA
+
+  [ Patrick Schleizer ]
+  * added missing dependency python-dbus to 'Depends:'
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: add dbus-python dependency
+
+  [ qubesuser ]
+  * qubes-rpc: fix broken temporary file deletion in qubes.GetImageRGBA
+  * qubes-rpc: fix icon selection using pyxdg and support SVG icons
+
+  [ Patrick Schleizer ]
+  * fixed 'Debian 8 apt.config.d misconfiguration'
+  * added missing dependency xserver-xorg-dev
+  * - Prevent 'su -' from asking for password in Debian [based]
+    templates. Thanks to @unman and @marmarek for suggesting the fix!
+    Fixes https://github.com/QubesOS/qubes-issues/issues/1128. - Changed
+    'ifeq (1,${DEBIANBUILD})' to 'ifeq ($(shell lsb_release -is),
+    Debian)' to make the build work outside of Qubes Builder as well.
+  * Fixed /etc/pam.d/su.qubes. (Moved line 'auth sufficient
+    pam_permit.so' up. May not be low '@include' lines.)
+  * fix typo
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 29 Sep 2015 16:39:55 +0200
+
+qubes-core-agent (3.0.16-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: remove SELinux disabling code
+  * Revert "qubes-desktop-run: Activate via DBUS when desktop file
+    contains DBusActivatable"
+  * qubes-desktop-run: start the Dbus service (if needed)
+
+  [ Patrick Schleizer ]
+  * added pulseaudio-kde and spice-vdagent to qubes-trigger-desktop-
+    file-install
+
+  [ Jason Mehring ]
+  * debian: Move python-xdg to depends section in debian/control
+  * sudoers.d: Stops QT from using the MIT-SHM X11 Shared Memory
+    Extension
+
+  [ Rusty Bird ]
+  * Mount /dev/xvdb with fs type "auto"
+
+  [ Marek Marczykowski-Górecki ]
+  * Move .desktop launching code to python moules so it can be reused
+  * Implement dropins for /etc/xdg/autostart (#1151)
+  * Remove dynamically generated autostart desktop files
+  * qubes-session-autostart: do not abort the whole process on invalid
+    file
+  * qubes-desktop-run: don't crash on Debian wheezy (glib < 2.36)
+  * debian: fix /dev permissions on upgrade
+  * systemd: fix starting cups
+  * debian: depend on gawk
+  * Fix show-hide-nm-applet.desktop - use OnlyShowIn=X-QUBES
+
+  [ Patrick Schleizer ]
+  * moved python-xdg from Recommends to Depends
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 03 Sep 2015 02:45:30 +0200
+
+qubes-core-agent (3.0.15-1) wheezy; urgency=medium
+
+  * debian: remove `Recommends: chrony`
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 08 Aug 2015 23:23:38 +0200
+
+qubes-core-agent (3.0.14-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * kernel-placeholder: prevent xl2tpd from pulling kernel packages
+  * qubes-core-vm-kernel-placeholder 1.0-3
+
+  [ Olivier MEDOC ]
+  * archlinux: update dependency list based on .spec file
+  * archlinux: reorganize install script to make it more easily
+    compareable with the .spec file
+  * archlinux: fix syntax errors in install file
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: fix permissions of /var/lib/qubes/dom0-updates
+
+  [ Patrick Schleizer ]
+  * also inform in cli if no new updates are available
+
+  [ Olivier MEDOC ]
+  * archlinux: pulseaudio should be configured in gui agent and will
+    break installation of pulseaudio if installed in core-agent-linux
+  * archlinux: enabled configuration of all core agent dependencies
+  * archlinux: ensure python2 is used for all scripts and fix
+    dependencies for qubes-desktop-run
+
+  [ Jason Mehring ]
+  * debian: Renamed incorrect filename:  00notiy-hook -> 00notify-hook
+  * debian: Comment out deb-src line in qubes-r3.list
+  * Use 'which' to locate fuser since fuser path is different in Fedora
+    and Debian
+  * debian: Change triggers to use `interest-await` (execute triggers
+    after all packages installed)
+  * Remove '.service' from systemd enable loop as unit_name already
+    contains .service in name
+  * debian: remove cups/print-applet triggers
+  * debian: Added cups, system-config-printer to Recommends
+  * Makefile: Add systemd drop-in support which include conditionals to
+    prevent services from starting
+  * fedora: Add systemd drop-in support which include conditionals to
+    prevent services from starting
+  * debian: Add systemd drop-in support which include conditionals to
+    prevent services from starting
+  * Re-aranged qubes-vm.preset to indicate which services are specificly
+    for Fedora only
+  * vm-systemd: Add systemd drop-in support which include conditionals
+    to prevent services from starting
+
+  [ Marek Marczykowski-Górecki ]
+  * archlinux: remove installOverridenServices as now handled by systemd
+    dropins
+  * fedora: do not own dropins directories
+  * fedora: simulate preset-all only on first install, not upgrade
+  * fedora: fix default locale generation
+  * qrexec: fix exit code from qrexec-client-vm
+  * qrexec: make sure that all the pipes/sockets are closed on cleanup
+
+  [ Jason Mehring ]
+  * qubes-desktop-file-install: Manages xdg desktop entry files
+  * debian: Reformat depends in control for better readability
+  * debian: qubes-desktop-file-install: Add misssing depend to contol
+  * debian: Switch to using org.mate.NotificationDaemon by default to
+    eliminate popups not closing
+  * fedora: Use 'slider' org.mate.NotificationDaemon theme
+  * qubes-desktop-run: Activate via DBUS when desktop file contains
+    DBusActivatable
+
+  [ Marek Marczykowski-Górecki ]
+  * Move `/usr/share/qubes/xdg` to `/var/lib/qubes/xdg`
+
+  [ Patrick Schleizer ]
+  * fixed "in place upgrade issue - base-passwd debconf interative
+    question asks 'Remove group "qubes"'"
+  * fixed "in place upgrade issue - base-passwd debconf interative
+    questi…on asks 'Remove group "qubes"'" for existing users
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 08 Aug 2015 04:16:52 +0200
+
 qubes-core-agent (3.0.13-1) wheezy; urgency=medium
 
   * fedora: ensure that /etc/sysconfig/iptables exists (Fedora 20)

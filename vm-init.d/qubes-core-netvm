@@ -4,39 +4,26 @@
 # description: Executes Qubes core scripts at NetVM boot
 #
 # Source function library.
+# shellcheck disable=SC1091
 . /etc/rc.d/init.d/functions
+
+# Source Qubes library.
+# shellcheck source=init/functions
+. /usr/lib/qubes/init/functions
 
 start()
 {
-	if ! [ -x /usr/bin/qubesdb-read ] ; then
-		echo "ERROR: /usr/bin/qubesdb-read not found!"
-		exit 1
-	fi
+	have_qubesdb || return
 
-	type=$(/usr/bin/qubesdb-read /qubes-vm-type)
-	if [ "$type" == "NetVM" ]; then
+	if is_netvm; then
 		/usr/lib/qubes/network-manager-prepare-conf-dir
 		/sbin/service NetworkManager start
 	fi
 
 	echo -n $"Executing Qubes Core scripts NetVM:"
-
-	# Setup gateway for all the VMs this netVM is serviceing...
-	network=$(/usr/bin/qubesdb-read /qubes-netvm-network 2>/dev/null)
-	if [ "x$network" != "x" ]; then
-		gateway=$(/usr/bin/qubesdb-read /qubes-netvm-gateway)
-		netmask=$(/usr/bin/qubesdb-read /qubes-netvm-netmask)
-		secondary_dns=$(/usr/bin/qubesdb-read /qubes-netvm-secondary-dns)
-		modprobe netbk 2> /dev/null || modprobe xen-netback
-		echo "NS1=$gateway" > /var/run/qubes/qubes-ns
-		echo "NS2=$secondary_dns" >> /var/run/qubes/qubes-ns
-		/usr/lib/qubes/qubes-setup-dnat-to-ns
-		echo "1" > /proc/sys/net/ipv4/ip_forward
-	fi
-	
-	success
-	echo ""
-	return 0
+    # shellcheck disable=SC2015
+	/usr/lib/qubes/init/network-proxy-setup && success || failure
+	echo
 }
 
 stop()
@@ -57,4 +44,5 @@ case "$1" in
 	;;
 esac
 
+# shellcheck disable=SC2086
 exit $RETVAL

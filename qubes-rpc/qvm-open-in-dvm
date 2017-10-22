@@ -20,12 +20,10 @@
 #
 #
 
-if ! [ $# = 1 ] ; then 
+if ! [ $# = 1 ] ; then
 	echo "Usage: $0 filename"
 	exit 1
 fi
 
-. /usr/lib/qubes/wrap-in-html-if-url.sh
-wrap_in_html_if_url "$1"
-
-exec /usr/lib/qubes/qrexec-client-vm '$dispvm' qubes.OpenInVM "/usr/lib/qubes/qopen-in-vm" "$FILE_ARGUMENT"
+# shellcheck disable=SC2016
+exec qvm-open-in-vm '$dispvm' "$1"

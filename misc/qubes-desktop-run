@@ -1,11 +1,7 @@
 #!/usr/bin/python
 
-from gi.repository import Gio
+from qubesxdg import launch
 import sys
 
-def main(myname, desktop, *files):
-    launcher = Gio.DesktopAppInfo.new_from_filename(desktop)
-    launcher.launch(files, None)
-
-if __name__ == "__main__":
-    main(*sys.argv)
+if __name__ == '__main__':
+    launch(*sys.argv[1:])

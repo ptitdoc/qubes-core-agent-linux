@@ -5,7 +5,7 @@
 
 set -e
 
-# The postint script may be called in the following ways:
+# The postinst script may be called in the following ways:
 #   * <postinst> 'configure' <most-recently-configured-version>
 #   * <old-postinst> 'abort-upgrade' <new version>
 #   * <conflictor's-postinst> 'abort-remove' 'in-favour' <package>
@@ -19,149 +19,92 @@ set -e
 # https://www.debian.org/doc/debian-policy/ch-maintainerscripts.html or
 # the debian-policy package
 
-# Directory that modified desktop entry config files are stored in
-XDG_CONFIG_QUBES="/usr/share/qubes/xdg"
 
-# Install overriden services only when original exists
-installOverridenServices() {
-    override_dir="${1}"
-    service="${2}"
-    retval=1
-
-    for unit in ${service}; do
-        unit="${unit%%.*}"
-        unit_name="$(basename ${unit})"
-        if [ -f ${unit}.service ]; then
-            echo "Installing override for ${unit}.service..."
-            cp ${override_dir}/${unit_name}.service /etc/systemd/system/
-            retval=0
-        fi
-        if [ -f ${unit}.socket -a -f ${override_dir}/${unit}.socket ]; then
-            echo "Installing override for ${unit}.socket..."
-            cp ${override_dir}/${unit_name}.socket /etc/systemd/system/
-            retval=0
-        fi
-        if [ -f ${unit}.path -a -f ${override_dir}/${unit}.path ]; then
-            echo "Installing override for ${unit}.path..."
-            cp ${override_dir}/${unit_name}.path /etc/systemd/system/
-            retval=0
-        fi
-    done
-
-    return ${retval}
-}
-
-reenableNetworkManager() {
-    # Disable original service to enable overriden one
-    echo "Disabling original service to enable overriden one..."
-    disableSystemdUnits ModemManager.service
-    disableSystemdUnits NetworkManager.service
-
-    # Disable D-BUS activation of NetworkManager - in AppVm it causes problems (eg PackageKit timeouts)
-    echo "Disable D-BUS activation of NetworkManager - in AppVm it causes problems (eg PackageKit timeouts)"
-    systemctl mask dbus-org.freedesktop.NetworkManager.service 2> /dev/null || echo "Could not disable D-BUS activation of NetworkManager"
-
-    echo "Re-enabling original service to enable overriden one..."
-    enableSystemdUnits ModemManager.service
-    enableSystemdUnits NetworkManager.service
-
-    # Fix for https://bugzilla.redhat.com/show_bug.cgi?id=974811
-    echo "Fix for https://bugzilla.redhat.com/show_bug.cgi?id=974811"
-    enableSystemdUnits NetworkManager-dispatcher.service
-}
-
-remove_ShowIn() {
-    if [ -e "${1}" ]; then
-        sed -i '/^\(Not\|Only\)ShowIn/d' "${1}"
+debug() {
+    if [ "${DEBDEBUG}" == "1" ]; then
+        echo -e "$@"
     fi
 }
 
-showIn() {
-    desktop_entry="${1}"
-    shown_in="${2}"
-    message="${shown_in:-"Shown in All;"}" 
-    desktop_entry_qubes="${XDG_CONFIG_QUBES}/autostart/${desktop_entry##*/}"
+systemdPreload() {
+    # Debian systemd helper does not yet honour preset, therefore use
+    # systemctl preset on each unit file (not using preset-all either since
+    # wheezy does not support it) listed in 75-qubes-vm.preset.
 
-    # Make sure Qubes autostart directory exists
-    mkdir -p "${XDG_CONFIG_QUBES}/autostart"
+    systemctl --no-reload preset-all > /dev/null 2>&1 && PRESET_FAILED=0 || PRESET_FAILED=1
 
-    # Desktop entry exists, so move to Qubes directory and modify it
-    if [ -e "${desktop_entry}" ]; then
-        echo "Desktop Entry Modification - ${message} ${desktop_entry##*/}..."
-        cp -pf "${desktop_entry}" "${desktop_entry_qubes}"
-
-        remove_ShowIn "${desktop_entry_qubes}"
-        sed -i '/^X-GNOME-Autostart-enabled.*[fF0]/d' "${desktop_entry_qubes}"
-
-        # Will only be '' if shown in all
-        if [ ! "${shown_in}x" == "x" ]; then
-            echo "${shown_in}" >> "${desktop_entry_qubes}" || true
-        fi
-
-    # Desktop entry must have been removed, so also remove from Qubes directory
-    else
-        echo "Desktop Entry Modification - Remove: ${desktop_entry##*/}..."
-        rm -f "${desktop_entry_qubes}"
-    fi
-}
-
-changeSystemdStatus() {
-    unit=${1}
-    disable=${2-0}
-    
-    # Check if unit file is currently active (running)
-    systemctl is-active ${unit} > /dev/null 2>&1 && active=true || unset active
-
-    case ${disable} in
-        0)
-            systemctl --quiet enable ${unit} > /dev/null 2>&1 || true
-            ;;
-        1)  
-            if [ $active ]; then
-                systemctl --quiet stop ${unit} > /dev/null 2>&1 || true
-            fi  
-
-            if [ -f /lib/systemd/system/${unit} ]; then
-                if fgrep -q '[Install]' /lib/systemd/system/${unit}; then
-                    systemctl --quiet disable ${unit} > /dev/null 2>&1 || true
-                else
-                    # Forcibly disable
-                    ln -sf /dev/null /etc/systemd/system/${unit}
+    # Mask any static unit files that are marked to be disabled
+    grep '^[[:space:]]*[^#;]' /lib/systemd/system-preset/75-qubes-vm.preset | while read -r action unit_name; do
+        case "${action}" in
+        disable)
+            if [ -e "/lib/systemd/system/${unit_name}" ]; then
+                if ! grep -F -q '[Install]' "/lib/systemd/system/${unit_name}"; then
+                    deb-systemd-helper mask "${unit_name}" > /dev/null 2>&1 || true
                 fi
-            else
-                systemctl --quiet disable ${unit} > /dev/null 2>&1 || true
             fi
             ;;
-    esac
-}
-
-# Enable systemd units
-enableSystemdUnits() {
-    for unit in $*; do
-        changeSystemdStatus ${unit} 0 || true
+        *)
+            # preset-all is not available in wheezy; so preset each unit file listed in 75-qubes-vm.preset
+            if [ "${PRESET_FAILED}" -eq 1 ]; then
+                systemctl --no-reload preset "${unit_name}" > /dev/null 2>&1 || true
+            fi
+            ;;
+        esac
     done
+
+    systemctl daemon-reload
 }
 
-# Disable systemd units
-disableSystemdUnits() {
-    for unit in $*; do
-        changeSystemdStatus ${unit} 1 || true
-    done
-}
-
-# Manually trigger all triggers to automaticatly configure
-triggerTriggers() {
-        path="$(readlink -m ${0})"
-        triggers="${path/postinst/triggers}"
-
-        awk '{sub(/[ \t]*#.*/,"")} NF' ${triggers} | while read line
-        do
-            /bin/bash -c "${0} triggered ${line##* }" || true
-        done
+installSerialConf() {
+    debug "Installing over-ridden serial.conf init script..."
+    if [ -e /etc/init/serial.conf ]; then
+        cp /usr/share/qubes/serial.conf /etc/init/serial.conf
+    fi
 }
 
 case "${1}" in
     configure)
+        # Initial installation of package only
+        # ($2 contains version number on update; nothing on initial installation)
+        if [ -z "${2}" ]; then
+
+            debug "FIRST INSTALL..."
+            # Location of files which contains list of protected files
+            # shellcheck source=init/functions
+            . /usr/lib/qubes/init/functions
+
+            # ensure that hostname resolves to 127.0.1.1 resp. ::1 and that /etc/hosts is
+            # in the form expected by qubes-sysinit.sh
+            if ! is_protected_file /etc/hostname ; then
+                for ip in '127\.0\.1\.1' '::1'; do
+                    if grep -q "^${ip}\(\s\|$\)" /etc/hosts; then
+                        sed -i "/^${ip}\s/,+0s/\(\s$(hostname)\)\+\(\s\|$\)/\2/g" /etc/hosts || true
+                        sed -i "s/^${ip}\(\s\|$\).*$/\0 $(hostname)/" /etc/hosts || true
+                    else
+                        echo "${ip//\\/} $(hostname)" >> /etc/hosts || true
+                    fi
+                done
+            fi
+
+            # remove hostname from 127.0.0.1 line (in debian the hostname is by default
+            # resolved to 127.0.1.1)
+            if ! is_protected_file /etc/hosts ; then
+                sed -i "/^127\.0\.0\.1\s/,+0s/\(\s$(hostname)\)\+\(\s\|$\)/\2/g" /etc/hosts || true
+            fi
+
+            # Set default "runlevel"
+            rm -f /etc/systemd/system/default.target
+            ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+
+            # Systemd preload-all
+            systemdPreload
+
+            # Maybe install overridden serial.conf init script
+            installSerialConf
+        fi
+        systemctl reenable haveged
+
+        debug "UPDATE..."
         # disable some Upstart services
         for init in plymouth-shutdown \
                     prefdm \
@@ -170,25 +113,10 @@ case "${1}" in
                     tty ; do
             dpkg-divert --divert /etc/init/${init}.conf.qubes-disabled --package qubes-core-agent --rename --add /etc/init/${init}.conf
         done
+        dpkg-divert --divert /etc/init/serial.conf.qubes-orig --package qubes-core-agent --rename --add /etc/init/serial.conf
 
-        # Disable sysv init network-manager
-        disableSystemdUnits network-manager
-
-        # Create NetworkManager configuration if we do not have it
-        if ! [ -e /etc/NetworkManager/NetworkManager.conf ]; then
-            echo '[main]' > /etc/NetworkManager/NetworkManager.conf
-            echo 'plugins = keyfile' >> /etc/NetworkManager/NetworkManager.conf
-            echo '[keyfile]' >> /etc/NetworkManager/NetworkManager.conf
-        fi
-        /usr/lib/qubes/qubes-fix-nm-conf.sh
-
-        # make sure locale is really generated
-        current_locale=`grep 'LANG\|LC_ALL' /etc/default/locale|head -n 1|cut -f 2 -d =`
-        if [ -n "$current_locale" ] && ! locale -a | grep -q "$current_locale"; then
-            base=`echo "$current_locale" | cut -f 1 -d .`
-            charmap=`echo "$current_locale.UTF-8" | cut -f 2 -d .`
-            [ -n "$charmap" ] && charmap="-f $charmap"
-            localedef -i $base $charmap $current_locale
+        if [ ! -L /etc/systemd/system/rpcbind.service ]; then
+            ln -s /dev/null /etc/systemd/system/rpcbind.service
         fi
 
         # Remove old firmware updates link
@@ -196,95 +124,23 @@ case "${1}" in
             rm -f /lib/firmware/updates
         fi
 
-        # Location of files which contains list of protected files
-        PROTECTED_FILE_LIST='/etc/qubes/protected-files.d'
-
-        # ensure that hostname resolves to 127.0.1.1 resp. ::1 and that /etc/hosts is
-        # in the form expected by qubes-sysinit.sh
-        if ! grep -rq "^/etc/hostname$" "${PROTECTED_FILE_LIST}" 2>/dev/null; then
-            for ip in '127\.0\.1\.1' '::1'; do
-                if grep -q "^${ip}\(\s\|$\)" /etc/hosts; then
-                    sed -i "/^${ip}\s/,+0s/\(\s`hostname`\)\+\(\s\|$\)/\2/g" /etc/hosts || true
-                    sed -i "s/^${ip}\(\s\|$\).*$/\0 `hostname`/" /etc/hosts || true
-                else
-                    echo "${ip//\\/} `hostname`" >> /etc/hosts || true
-                fi
-            done
+        # remove old symlinks
+        if [ -L /etc/systemd/system/sysinit.target.wants/qubes-random-seed.service ]; then
+            rm /etc/systemd/system/sysinit.target.wants/qubes-random-seed.service
+        fi
+        if [ -L /etc/systemd/system/multi-user.target.wants/qubes-mount-home.service ]; then
+            rm /etc/systemd/system/multi-user.target.wants/qubes-mount-home.service
         fi
 
-        # remove hostname from 127.0.0.1 line (in debian the hostname is by default
-        # resolved to 127.0.1.1)
-        if ! grep -rq "^/etc/hosts$" "${PROTECTED_FILE_LIST}" 2>/dev/null; then
-            sed -i "/^127\.0\.0\.1\s/,+0s/\(\s`hostname`\)\+\(\s\|$\)/\2/g" /etc/hosts || true
+        if ! dpkg-statoverride --list /var/lib/qubes/dom0-updates >/dev/null 2>&1; then
+            dpkg-statoverride --update --add user user 775 /var/lib/qubes/dom0-updates
         fi
 
-        chown user:user /home_volatile/user
+        glib-compile-schemas /usr/share/glib-2.0/schemas || true
 
-        dpkg-divert --divert /etc/init/serial.conf.qubes-orig --package qubes-core-agent --rename --add /etc/init/serial.conf
 
-        # Enable Qubes systemd units
-        enableSystemdUnits \
-            qubes-sysinit.service \
-            qubes-misc-post.service \
-            qubes-netwatcher.service \
-            qubes-network.service \
-            qubes-firewall.service \
-            qubes-updates-proxy.service \
-            qubes-update-check.timer \
-            qubes-qrexec-agent.service
-
-        # Set default "runlevel"
-        rm -f /etc/systemd/system/default.target
-        ln -s /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
-
-        # Process all triggers which will set defaults to wanted values
-        triggerTriggers
-
-        disableSystemdUnits \
-            alsa-store.service \
-            alsa-restore.service \
-            auditd.service \
-            avahi.service \
-            avahi-daemon.service \
-            backuppc.service \
-            cpuspeed.service \
-            crond.service \
-            fedora-autorelabel.service \
-            fedora-autorelabel-mark.service \
-            ipmi.service \
-            hwclock-load.service \
-            hwclock-save.service \
-            mdmonitor.service \
-            multipathd.service \
-            openct.service \
-            rpcbind.service \
-            mcelog.service \
-            fedora-storage-init.service \
-            fedora-storage-init-late.service \
-            plymouth-start.service \
-            plymouth-read-write.service \
-            plymouth-quit.service \
-            plymouth-quit-wait.service \
-            sshd.service \
-            tcsd.service \
-            sm-client.service \
-            sendmail.service \
-            mdmonitor-takeover.service \
-            rngd smartd.service \
-            upower.service \
-            irqbalance.service \
-            colord.service 
-
-        rm -f /etc/systemd/system/getty.target.wants/getty@tty*.service
-
-        # Enable other systemd units
-        enableSystemdUnits \
-            rsyslog.service \
-            netfilter-persistent.service
-
-        # XXX: TODO: Needs to be implemented still
-        # These do not exist on debian; maybe a different package name
-        #    ntpd.service \
+        # Update Qubes App Menus
+        /usr/lib/qubes/qubes-trigger-sync-appmenus.sh || true
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
@@ -295,107 +151,19 @@ case "${1}" in
         for trigger in ${2}; do
             case "${trigger}" in
 
-                # Update Qubes App Menus
                 /usr/share/applications)
-                    echo "Updating Qubes App Menus..."
+                    debug "Updating Qubes App Menus..."
                     /usr/lib/qubes/qubes-trigger-sync-appmenus.sh || true
                     ;;
 
-                # Install overriden services only when original exists
-                /lib/systemd/system/NetworkManager.service | \
-                /lib/systemd/system/NetworkManager-wait-online.service | \
-                /lib/systemd/system/ModemManager.service)
-                    UNITDIR=/lib/systemd/system
-                    OVERRIDEDIR=/usr/lib/qubes/init
-                    installOverridenServices "${OVERRIDEDIR}" "${trigger}"
-                    if [ $? -eq 0 ]; then
-                        reenableNetworkManager
-                    fi
-                    ;;
-
-                # Enable cups only when it is real Systemd service
-                /lib/systemd/system/cups.service)
-                    [ -e /lib/systemd/system/cups.service ] && enableSystemdUnits cups.service
-                    ;;
-
-                # "Enable haveged service"
-                /lib/systemd/system/haveged.service)
-                    [ -e /lib/systemd/system/haveged.service ] && enableSystemdUnits haveged.service
-                    ;;
-
-                # Install overridden serial.conf init script 
+                # Install overridden serial.conf init script
                 /etc/init/serial.conf)
-                    echo "Installing over-ridden serial.conf init script..."
-                    if [ -e /etc/init/serial.conf ]; then
-                        cp /usr/share/qubes/serial.conf /etc/init/serial.conf
-                    fi
+                    installSerialConf
                     ;;
 
-                # Disable SELinux"
-                /etc/selinux/config)
-                    echo "Disabling SELinux..."
-                    if [ -e /etc/selinux/config ]; then
-                        sed -e s/^SELINUX=.*$/SELINUX=disabled/ </etc/selinux/config >/etc/selinux/config.processed
-                        mv /etc/selinux/config.processed /etc/selinux/config
-                        setenforce 0 2>/dev/null
-                    fi
-                    ;;
-
-                # Desktop Entry Modification - Remove existing rules
-                /etc/xdg/autostart/gpk-update-icon.desktop | \
-                /etc/xdg/autostart/nm-applet.desktop | \
-                /etc/xdg/autostart/abrt-applet.desktop | \
-                /etc/xdg/autostart/notify-osd.desktop)
-                    showIn "${trigger}"
-                    ;;
-
-                # Desktop Entry Modification - Not shown in Qubes
-                /etc/xdg/autostart/pulseaudio.desktop | \
-                /etc/xdg/autostart/deja-dup-monitor.desktop | \
-                /etc/xdg/autostart/imsettings-start.desktop | \
-                /etc/xdg/autostart/krb5-auth-dialog.desktop | \
-                /etc/xdg/autostart/pulseaudio.desktop | \
-                /etc/xdg/autostart/restorecond.desktop | \
-                /etc/xdg/autostart/sealertauto.desktop | \
-                /etc/xdg/autostart/gnome-power-manager.desktop | \
-                /etc/xdg/autostart/gnome-sound-applet.desktop | \
-                /etc/xdg/autostart/gnome-screensaver.desktop | \
-                /etc/xdg/autostart/orca-autostart.desktop)
-                    showIn "${trigger}" 'NotShowIn=QUBES;'
-                    ;;
-
-                # Desktop Entry Modification - Not shown in in DisposableVM
-                /etc/xdg/autostart/gcm-apply.desktop)
-                    showIn "${trigger}" 'NotShowIn=DisposableVM;'
-                    ;;
-
-                # Desktop Entry Modification - Only shown in AppVM
-                /etc/xdg/autostart/gnome-keyring-gpg.desktop | \
-                /etc/xdg/autostart/gnome-keyring-pkcs11.desktop | \
-                /etc/xdg/autostart/gnome-keyring-secrets.desktop | \
-                /etc/xdg/autostart/gnome-keyring-ssh.desktop | \
-                /etc/xdg/autostart/gnome-settings-daemon.desktop | \
-                /etc/xdg/autostart/user-dirs-update-gtk.desktop | \
-                /etc/xdg/autostart/gsettings-data-convert.desktop)
-                    showIn "${trigger}" 'OnlyShowIn=GNOME;AppVM;'
-                    ;;
-
-                # Desktop Entry Modification - Only shown in Gnome & UpdateableVM
-                /etc/xdg/autostart/gpk-update-icon.desktop)
-                    showIn "${trigger}" 'OnlyShowIn=GNOME;UpdateableVM;'
-                    ;;
-
-                # Desktop Entry Modification - Only shown in Gnome & Qubes
-                /etc/xdg/autostart/nm-applet.desktop)
-                    showIn "${trigger}" 'OnlyShowIn=GNOME;QUBES;'
-                    ;;
-
-                *)
-                    echo "postinst called with unknown trigger \`${2}'" >&2
-                    exit 1
-                    ;;
             esac
         done
+        exit 0
         ;;
 
     *)

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 NM_CONFIG_DIR=/etc/NetworkManager/system-connections
-if [ -d $NM_CONFIG_DIR -a ! -h $NM_CONFIG_DIR ]; then
+if [ -d $NM_CONFIG_DIR ] && [ ! -h $NM_CONFIG_DIR ]; then
     mkdir -p /rw/config/NM-system-connections
     mv $NM_CONFIG_DIR/* /rw/config/NM-system-connections/ 2> /dev/null || true
     rmdir $NM_CONFIG_DIR
@@ -13,7 +13,7 @@ unmanaged_devices=mac:fe:ff:ff:ff:ff:ff
 #for mac in `xenstore-ls device/vif | grep mac | cut -d= -f2 | tr -d '" '`; do
 #    unmanaged_devices="$unmanaged_devices;mac:$mac"
 #done
-sed -i -e "s/^unmanaged-devices=.*/unmanaged-devices=$unmanaged_devices/" /etc/NetworkManager/NetworkManager.conf
-sed -i -e "s/^plugins=.*/plugins=keyfile/" /etc/NetworkManager/NetworkManager.conf
+sed -r -i -e "s/^#?unmanaged-devices=.*/unmanaged-devices=$unmanaged_devices/" /etc/NetworkManager/NetworkManager.conf
+sed -r -i -e "s/^#?plugins=.*/plugins=keyfile/" /etc/NetworkManager/NetworkManager.conf
 
 exit 0

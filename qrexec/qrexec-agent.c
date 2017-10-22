@@ -20,6 +20,8 @@
  */
 
 #define _GNU_SOURCE
+#define HAVE_PAM
+
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -35,6 +37,9 @@
 #include <grp.h>
 #include <sys/stat.h>
 #include <assert.h>
+#ifdef HAVE_PAM
+#include <security/pam_appl.h>
+#endif
 #include "qrexec.h"
 #include <libvchan.h>
 #include "libqrexec-utils.h"
@@ -47,16 +52,31 @@ struct _connection_info {
     int connect_port;
 };
 
+/* structure describing a single request waiting for qubes.WaitForSession to
+ * finish */
+struct _waiting_request {
+    int type;
+    int connect_domain;
+    int connect_port;
+    char *cmdline;
+};
+
 int max_process_fd = -1;
 
 /*  */
 struct _connection_info connection_info[MAX_FDS];
 
+struct _waiting_request requests_waiting_for_session[MAX_FDS];
+
 libvchan_t *ctrl_vchan;
+
+pid_t wait_for_session_pid = -1;
 
 int trigger_fd;
 
 int meminfo_write_started = 0;
+
+void handle_server_exec_request_do(int type, int connect_domain, int connect_port, char *cmdline);
 
 void no_colon_in_cmd()
 {
@@ -65,30 +85,199 @@ void no_colon_in_cmd()
     exit(1);
 }
 
+#ifdef HAVE_PAM
+int pam_conv_callback(int num_msg, const struct pam_message **msg,
+        struct pam_response **resp, void *appdata_ptr __attribute__((__unused__)))
+{
+    int i;
+    struct pam_response *resp_array =
+        calloc(sizeof(struct pam_response), num_msg);
+
+    if (resp_array == NULL)
+        return PAM_BUF_ERR;
+
+    for (i=0; i<num_msg; i++) {
+        if (msg[i]->msg_style == PAM_ERROR_MSG)
+            fprintf(stderr, "%s", msg[i]->msg);
+        if (msg[i]->msg_style == PAM_PROMPT_ECHO_OFF ||
+                msg[i]->msg_style == PAM_PROMPT_ECHO_ON) {
+            resp_array[i].resp = strdup("");
+            resp_array[i].resp_retcode = 0;
+        }
+    }
+    *resp = resp_array;
+    return PAM_SUCCESS;
+}
+
+static struct pam_conv conv = {
+    pam_conv_callback,
+    NULL
+};
+#endif
+
+/* Start program requested by dom0 in already prepared process
+ * (stdin/stdout/stderr already set, etc)
+ * Called in two cases:
+ *  MSG_JUST_EXEC - from qrexec-agent-data.c:handle_new_process_common->handle_just_exec
+ *  MSG_EXEC_CMDLINE - from
+ *  qrexec-agent-data.c:handle_new_process_common->do_fork_exec (callback
+ *  registerd with register_exec_func in init() here)
+ *
+ * cmd parameter came from dom0 (MSG_JUST_EXEC or MSG_EXEC_CMDLINE messages), so
+ * is trusted. Even in VM-VM service request, the command here is controlled by
+ * dom0 - it will be in form:
+ * RPC_REQUEST_COMMAND " " service_name " " source_vm_name
+ * where service_name is already validated against Qrexec RPC policy
+ *
+ * If dom0 sends overly long cmd, it will probably crash qrexec-agent (unless
+ * process can allocate up to 4GB on both stack and heap), sorry.
+ */
 void do_exec(const char *cmd)
 {
-    char buf[strlen(QUBES_RPC_MULTIPLEXER_PATH) + strlen(cmd) - strlen(RPC_REQUEST_COMMAND) + 1];
-    char *realcmd = index(cmd, ':');
+    char buf[strlen(QUBES_RPC_MULTIPLEXER_PATH) + strlen(cmd) - RPC_REQUEST_COMMAND_LEN + 1];
+    char *realcmd = index(cmd, ':'), *user;
+#ifdef HAVE_PAM
+    int retval, status;
+    pam_handle_t *pamh=NULL;
+    struct passwd *pw;
+    struct passwd pw_copy;
+    pid_t child, pid;
+    char **env;
+    char pid_s[32];
+    char *arg0;
+    char *shell_basename;
+#endif
+
     if (!realcmd)
         no_colon_in_cmd();
     /* mark end of username and move to command */
-    *realcmd = 0;
+    user=strndup(cmd,realcmd-cmd);
     realcmd++;
     /* ignore "nogui:" prefix in linux agent */
-    if (strncmp(realcmd, "nogui:", 6) == 0)
-        realcmd+=6;
+    if (strncmp(realcmd, NOGUI_CMD_PREFIX, NOGUI_CMD_PREFIX_LEN) == 0)
+        realcmd += NOGUI_CMD_PREFIX_LEN;
     /* replace magic RPC cmd with RPC multiplexer path */
-    if (strncmp(realcmd, RPC_REQUEST_COMMAND " ", strlen(RPC_REQUEST_COMMAND)+1)==0) {
+    if (strncmp(realcmd, RPC_REQUEST_COMMAND " ", RPC_REQUEST_COMMAND_LEN+1)==0) {
         strcpy(buf, QUBES_RPC_MULTIPLEXER_PATH);
-        strcpy(buf + strlen(QUBES_RPC_MULTIPLEXER_PATH), realcmd + strlen(RPC_REQUEST_COMMAND));
+        strcpy(buf + strlen(QUBES_RPC_MULTIPLEXER_PATH), realcmd + RPC_REQUEST_COMMAND_LEN);
         realcmd = buf;
     }
+
     signal(SIGCHLD, SIG_DFL);
     signal(SIGPIPE, SIG_DFL);
 
-    execl("/bin/su", "su", "-", cmd, "-c", realcmd, NULL);
+#ifdef HAVE_PAM
+    pw = getpwnam (user);
+    if (! (pw && pw->pw_name && pw->pw_name[0] && pw->pw_dir && pw->pw_dir[0]
+                && pw->pw_passwd)) {
+        fprintf(stderr, "user %s does not exist", user);
+        exit(1);
+    }
+
+    /* Make a copy of the password information and point pw at the local
+     * copy instead.  Otherwise, some systems (e.g. Linux) would clobber
+     * the static data through the getlogin call.
+     */
+    pw_copy = *pw;
+    pw = &pw_copy;
+    pw->pw_name = strdup(pw->pw_name);
+    pw->pw_passwd = strdup(pw->pw_passwd);
+    pw->pw_dir = strdup(pw->pw_dir);
+    pw->pw_shell = strdup(pw->pw_shell);
+    endpwent();
+
+    shell_basename = basename (pw->pw_shell);
+    /* this process is going to die shortly, so don't care about freeing */
+    arg0 = malloc (strlen (shell_basename) + 2);
+    if (!arg0)
+        goto error;
+    arg0[0] = '-';
+    strcpy (arg0 + 1, shell_basename);
+
+    retval = pam_start("qrexec", user, &conv, &pamh);
+    if (retval != PAM_SUCCESS)
+        goto error;
+
+    retval = pam_authenticate(pamh, 0);
+    if (retval != PAM_SUCCESS)
+        goto error;
+
+    retval = initgroups(pw->pw_name, pw->pw_gid);
+    if (retval == -1) {
+        perror("initgroups");
+        goto error;
+    }
+
+    retval = pam_setcred(pamh, PAM_ESTABLISH_CRED);
+    if (retval != PAM_SUCCESS)
+        goto error;
+
+    retval = pam_open_session(pamh, 0);
+    if (retval != PAM_SUCCESS)
+        goto error;
+
+    /* provide this variable to child process */
+    snprintf(pid_s, sizeof(pid_s), "QREXEC_AGENT_PID=%d", getppid());
+    retval = pam_putenv(pamh, pid_s);
+    if (retval != PAM_SUCCESS)
+        goto error;
+
+    /* FORK HERE */
+    child = fork ();
+
+    switch (child) {
+        case -1:
+            goto error;
+        case 0:
+            /* child */
+
+            if (setgid (pw->pw_gid))
+                exit(126);
+            if (setuid (pw->pw_uid))
+                exit(126);
+            setsid();
+            /* This is a copy but don't care to free as we exec later anyways.  */
+            env = pam_getenvlist (pamh);
+
+            execle(pw->pw_shell, arg0, "-c", realcmd, (char*)NULL, env);
+            exit(127);
+        default:
+            /* parent */
+            /* close std*, so when child process closes them, qrexec-agent will receive EOF */
+            /* this is the main purpose of this reimplementation of /bin/su... */
+            close(0);
+            close(1);
+            close(2);
+    }
+
+    /* reachable only in parent */
+    pid = waitpid (child, &status, 0);
+    if (pid != (pid_t)-1) {
+        if (WIFSIGNALED (status))
+            status = WTERMSIG (status) + 128;
+        else
+            status = WEXITSTATUS (status);
+    } else
+        status = 1;
+
+    retval = pam_close_session (pamh, 0);
+
+    retval = pam_setcred (pamh, PAM_DELETE_CRED | PAM_SILENT);
+
+    if (pam_end(pamh, retval) != PAM_SUCCESS) {     /* close Linux-PAM */
+        pamh = NULL;
+        exit(1);
+    }
+    exit(status);
+error:
+    pam_end(pamh, PAM_ABORT);
+    exit(1);
+#else
+    execl("/bin/su", "su", "-", user, "-c", realcmd, NULL);
     perror("execl");
     exit(1);
+#endif
+
 }
 
 void handle_vchan_error(const char *op)
@@ -221,13 +410,187 @@ void register_vchan_connection(pid_t pid, int fd, int domain, int port)
     fprintf(stderr, "No free slot for child %d (connection to %d:%d)\n", pid, domain, port);
 }
 
-void handle_server_exec_request(struct msg_header *hdr)
+/* Load service configuration from /etc/qubes/rpc-config/
+ * (QUBES_RPC_CONFIG_DIR), currently only wait-for-session option supported.
+ *
+ * Return:
+ *  1  - config successfuly loaded
+ *  0  - config not found
+ *  -1 - other error
+ */
+int load_service_config(const char *service_name, int *wait_for_session) {
+    char filename[256];
+    char config[MAX_CONFIG_SIZE];
+    char *config_iter = config;
+    FILE *config_file;
+    size_t read_count;
+    char *current_line;
+
+    if (snprintf(filename, sizeof(filename), "%s/%s",
+                QUBES_RPC_CONFIG_DIR, service_name) >= (int)sizeof(filename)) {
+        /* buffer too small?! */
+        return -1;
+    }
+
+    config_file = fopen(filename, "r");
+    if (!config_file) {
+        if (errno == ENOENT)
+            return 0;
+        else {
+            fprintf(stderr, "Failed to load %s\n", filename);
+            return -1;
+        }
+    }
+
+    read_count = fread(config, 1, sizeof(config)-1, config_file);
+
+    if (ferror(config_file)) {
+        fclose(config_file);
+        return -1;
+    }
+
+    // config is a text file, should not have \0 inside; but when it has, part
+    // after it will be ignored
+    config[read_count] = 0;
+
+    while ((current_line = strsep(&config_iter, "\n"))) {
+        // ignore comments
+        if (current_line[0] == '#')
+            continue;
+        sscanf(current_line, "wait-for-session=%d", wait_for_session);
+    }
+
+    fclose(config_file);
+    return 1;
+}
+
+/* Check if requested command/service require GUI session and if so, initiate
+ * waiting process.
+ *
+ * Return:
+ *  - 1 - waiting is needed, caller should register request to be proceeded
+ *  only after session is started)
+ *  - 0 - waiting is not needed, caller may proceed with request immediately
+ */
+int wait_for_session_maybe(char *cmdline) {
+    char *realcmd = index(cmdline, ':');
+    char *user, *service_name, *source_domain, *service_argument;
+    int stdin_pipe[2];
+    int wait_for_session = 0;
+
+    if (!realcmd)
+        /* no colon in command line, this will be properly reported later */
+        return 0;
+
+    /* "nogui:" prefix have priority - do not wait for session */
+    if (strncmp(realcmd, NOGUI_CMD_PREFIX, NOGUI_CMD_PREFIX_LEN) == 0)
+        return 0;
+
+    /* extract username */
+    user = strndup(cmdline, realcmd - cmdline);
+    realcmd++;
+
+    /* wait for session only for service requests */
+    if (strncmp(realcmd, RPC_REQUEST_COMMAND " ", RPC_REQUEST_COMMAND_LEN+1) != 0) {
+        free(user);
+        return 0;
+    }
+
+    realcmd += RPC_REQUEST_COMMAND_LEN+1;
+    /* now realcmd contains service name (possibly with argument after '+'
+     * char) and source domain name, after space */
+    source_domain = index(realcmd, ' ');
+    if (!source_domain) {
+        /* qrexec-rpc-multiplexer will properly report this */
+        free(user);
+        return 0;
+    }
+    service_name = strndup(realcmd, source_domain - realcmd);
+    source_domain++;
+
+    /* first try to load config for specific argument */
+    switch (load_service_config(service_name, &wait_for_session)) {
+        case 0:
+            /* no config for specific argument, try for bare service name */
+            service_argument = index(service_name, '+');
+            if (!service_argument) {
+                /* there was no argument, so no config at all - do not wait for
+                 * session */
+                free(user);
+                return 0;
+            }
+            /* cut off the argument */
+            *service_argument = '\0';
+
+            if (load_service_config(service_name, &wait_for_session) != 1) {
+                /* no config, or load error -> no wait for session */
+                free(user);
+                return 0;
+            }
+            break;
+
+        case 1:
+            /* config loaded */
+            break;
+
+        case -1:
+            /* load error -> no wait for session */
+            free(user);
+            return 0;
+    }
+
+    if (!wait_for_session) {
+        /* setting not set, or set to 0 */
+        free(user);
+        return 0;
+    }
+
+    /* ok, now we know that service is configured to wait for session */
+
+    if (wait_for_session_pid != -1) {
+        /* we're already waiting */
+        free(user);
+        return 1;
+    }
+
+    if (pipe(stdin_pipe) == -1) {
+        perror("pipe for wait-for-session");
+        free(user);
+        return 0;
+    }
+    /* start waiting process */
+    wait_for_session_pid = fork();
+    switch (wait_for_session_pid) {
+        case 0:
+            close(stdin_pipe[1]);
+            dup2(stdin_pipe[0], 0);
+            execl("/etc/qubes-rpc/qubes.WaitForSession", "qubes.WaitForSession",
+                    source_domain, (char*)NULL);
+            exit(1);
+        case -1:
+            perror("fork wait-for-session");
+            free(user);
+            return 0;
+        default:
+            close(stdin_pipe[0]);
+            if (write(stdin_pipe[1], user, strlen(user)) == -1)
+                perror("write error");
+            if (write(stdin_pipe[1], "\n", 1) == -1)
+                perror("write error");
+            close(stdin_pipe[1]);
+    }
+    free(user);
+    /* qubes.WaitForSession started, postpone request until it report back */
+    return 1;
+}
+
+
+/* hdr parameter is received from dom0, so it is trusted */
+void handle_server_exec_request_init(struct msg_header *hdr)
 {
     struct exec_params params;
     int buf_len = hdr->len-sizeof(params);
     char buf[buf_len];
-    pid_t child_agent;
-    int client_fd;
 
     assert(hdr->len >= sizeof(params));
 
@@ -236,18 +599,54 @@ void handle_server_exec_request(struct msg_header *hdr)
     if (libvchan_recv(ctrl_vchan, buf, buf_len) < 0)
         handle_vchan_error("read exec cmd");
 
-    if ((hdr->type == MSG_EXEC_CMDLINE || hdr->type == MSG_JUST_EXEC) &&
-            !strstr(buf, ":nogui:")) {
-        int child_socket = try_fork_server(hdr->type,
+    buf[buf_len-1] = 0;
+
+    if (hdr->type != MSG_SERVICE_CONNECT && wait_for_session_maybe(buf)) {
+        /* waiting for session, postpone actual call */
+        int slot_index = 0;
+        while (slot_index < MAX_FDS)
+            if (!requests_waiting_for_session[slot_index].cmdline)
+                break;
+        if (slot_index == MAX_FDS) {
+            /* no free slots */
+            fprintf(stderr, "No free slots for waiting for GUI session, continuing!\n");
+        } else {
+            requests_waiting_for_session[slot_index].type = hdr->type;
+            requests_waiting_for_session[slot_index].connect_domain = params.connect_domain;
+            requests_waiting_for_session[slot_index].connect_port = params.connect_port;
+            requests_waiting_for_session[slot_index].cmdline = strdup(buf);
+            /* nothing to do now, when we get GUI session, we'll continue */
+            return;
+        }
+    }
+
+    handle_server_exec_request_do(hdr->type, params.connect_domain, params.connect_port, buf);
+}
+
+void handle_server_exec_request_do(int type, int connect_domain, int connect_port, char *cmdline) {
+    int client_fd;
+    pid_t child_agent;
+    int cmdline_len = strlen(cmdline) + 1; // size of cmdline, including \0 at the end
+    struct exec_params params = {
+        .connect_domain = connect_domain,
+        .connect_port = connect_port,
+    };
+
+    if ((type == MSG_EXEC_CMDLINE || type == MSG_JUST_EXEC) &&
+            !strstr(cmdline, ":nogui:")) {
+        int child_socket;
+
+        child_socket = try_fork_server(type,
                 params.connect_domain, params.connect_port,
-                buf, buf_len);
+                cmdline, cmdline_len);
         if (child_socket >= 0) {
             register_vchan_connection(-1, child_socket,
                     params.connect_domain, params.connect_port);
             return;
         }
     }
-    if (hdr->type == MSG_SERVICE_CONNECT && sscanf(buf, "SOCKET%d", &client_fd)) {
+
+    if (type == MSG_SERVICE_CONNECT && sscanf(cmdline, "SOCKET%d", &client_fd)) {
         /* FIXME: Maybe add some check if client_fd is really FD to some
          * qrexec-client-vm process; but this data comes from qrexec-daemon
          * (which sends back what it got from us earlier), so it isn't critical.
@@ -267,9 +666,9 @@ void handle_server_exec_request(struct msg_header *hdr)
     }
 
     /* No fork server case */
-    child_agent = handle_new_process(hdr->type,
+    child_agent = handle_new_process(type,
             params.connect_domain, params.connect_port,
-            buf, buf_len);
+            cmdline, cmdline_len);
 
     register_vchan_connection(child_agent, -1,
             params.connect_domain, params.connect_port);
@@ -309,7 +708,7 @@ void handle_server_cmd()
         case MSG_JUST_EXEC:
         case MSG_SERVICE_CONNECT:
             wake_meminfo_writer();
-            handle_server_exec_request(&s_hdr);
+            handle_server_exec_request_init(&s_hdr);
             break;
         case MSG_SERVICE_REFUSED:
             handle_service_refused(&s_hdr);
@@ -359,6 +758,21 @@ void reap_children()
     int pid;
     int id;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        if (pid == wait_for_session_pid) {
+            for (id = 0; id < MAX_FDS; id++) {
+                if (!requests_waiting_for_session[id].cmdline)
+                    continue;
+                handle_server_exec_request_do(
+                        requests_waiting_for_session[id].type,
+                        requests_waiting_for_session[id].connect_domain,
+                        requests_waiting_for_session[id].connect_port,
+                        requests_waiting_for_session[id].cmdline);
+                free(requests_waiting_for_session[id].cmdline);
+                requests_waiting_for_session[id].cmdline = NULL;
+            }
+            wait_for_session_pid = -1;
+            continue;
+        }
         id = find_connection(pid);
         if (id < 0)
             continue;

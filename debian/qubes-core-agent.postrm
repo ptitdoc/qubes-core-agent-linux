@@ -22,7 +22,7 @@ set -e
 #
 #     Called when the old postrm upgrade action fails. The new package will be
 # unpacked, but only essential packages and pre-dependencies can be relied on.
-# Pre-dependencies will either be configured or will be "Unpacked" or 
+# Pre-dependencies will either be configured or will be "Unpacked" or
 # "Half-Configured" but previously had been configured and was never removed.
 #
 #   * <new-postrm> 'abort-install'
@@ -43,9 +43,13 @@ if [ "${1}" = "remove" ] ; then
         rm /lib/firmware/updates
     fi
 
-    for srv in qubes-dvm qubes-sysinit qubes-misc-post qubes-netwatcher qubes-network qubes-qrexec-agent; do
+    for srv in qubes-sysinit qubes-misc-post qubes-network qubes-qrexec-agent; do
         systemctl disable ${srv}.service
     done
+fi
+
+if [ "$1" = "purge" ]; then
+    dpkg-statoverride --remove /var/lib/qubes/dom0-updates || test $? -eq 2
 fi
 
 # dh_installdeb will replace this with shell code automatically
